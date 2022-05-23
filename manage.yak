@@ -1,0 +1,157 @@
+loglevel(`info`)
+
+command = cli.String("c")
+command = str.ToLower(command)
+if !str.StringSliceContains(["up", "down", "ls"], command) {
+    die("no cmd available [up down ls]")
+}
+
+quiet = cli.Have("q", cli.setHelp("Quiet is flag disable stdout"))
+
+keyword = cli.String("k", cli.setHelp("Start/Down Vulbox by Keyword"), cli.setRequired(false))
+
+infos, err = file.ReadDirInfoInDirectory(".")
+die(err)
+
+// 判断端口是不是存在
+currentPort = ["0"]
+alreadyRegister = func(port) {
+    return str.StringSliceContains(currentPort, port)
+}
+registerCurrentPort = func(port) {
+    currentPort = append(currentPort, port)
+}
+
+// 判断端口暴露信息
+exposePorts = {}
+outputPorts = func(name, port, originPort) {
+    raw = exposePorts[name]
+    if raw == undefined {
+        exposePorts[name] = [{
+            "current": port,
+            "origin":  originPort,
+        }]
+    } else {
+        exposePorts[name] = append(exposePorts[name], {
+            "current": port,
+            "origin": originPort,
+        })
+    }
+}
+
+defer func{
+    println("## Expose PORTS By Vulinone\n\n")
+    for name, data = range exposePorts {
+        printf("### VUL IMAGE: `%v`\n\n", name)
+        for _, dataItem = range data {
+            printf("    PORT: `%v` `(<-%v in docker)`\n\n", dataItem["current"], dataItem["origin"])
+        }
+    }
+}
+
+defer func{
+    err = recover()
+    if err != nil {
+        log.error("met err: %v", err)
+    }
+}
+
+for _, info = range infos {
+    if str.Contains(info.Path, "/.git/") {
+        continue
+    }
+
+    if info.IsDir {
+        haveCompose = false
+        dirName = ""
+        composeYamlPath = ""
+        for _, subInfo = range file.Ls(info.Path) {
+            if haveCompose {
+                continue
+            }
+            haveCompose = str.MatchAnyOfGlob(subInfo.Path, "*/docker-compose.yaml", "*/docker-compose.yml") 
+            if haveCompose {
+                dirName = file.GetDirPath(subInfo.Path)
+                composeYamlPath = subInfo.Path
+            }
+            dirName = str.TrimRight(dirName, "/")
+        }
+        if !haveCompose {
+            continue
+        }
+
+        // Filter
+        yakit.Info("checking for %v", file.Split(dirName)[1])
+        if keyword != "" {
+            _, name = file.Split(dirName)
+            if !str.Contains(name, keyword) {
+                yakit.Info("Skip [%v]", name)
+                continue
+            }
+        }
+
+        // Startup or DOWN
+        err = os.Chdir(dirName)
+        die(err)
+        println("Change Dir To [" + dirName + "]")
+
+        _, vulName = file.Split(dirName)
+
+        yamlContent, _ = file.ReadFile(composeYamlPath)
+        if len(yamlContent) > 0 {
+            for _, info := range re.FindSubmatchAll(string(yamlContent), `\s*-\s+("?(\d{2,5})\:(\d{2,5})"?)`) {
+                if len(info) < 4 {
+                    continue
+                }
+                port, originPort = info[2], info[3]
+                if alreadyRegister(port) {
+                    msg := sprintf("VUL IMAGE: %v's expose ports: %v(:%v in docker) is conflict", vulName, port, originPort)
+                    defer yakit.Error(msg)
+                    die(msg)
+                } else {
+                    registerCurrentPort(port)
+                }
+                yakit.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
+                outputPorts(vulName, port, originPort)
+            }
+        }
+        if command == "up" {
+            cmd, err = exec.Command("docker-compose up -d")
+            if err != nil {
+                println("ERROR")
+                println(err.Error())
+                continue
+            }
+
+            if !quiet {
+                cmd.Stdout = os.Stdout
+            }
+            cmd.Stderr = os.Stderr
+            err = cmd.Run()
+            if err != nil {
+                yakit.Error("RUN docker-compose up for %v failed: %v", dirName, err)
+                continue
+            }
+            sleep(1)
+        }
+
+        if command == "down" {
+            cmd, err = exec.Command("docker-compose down")
+            if err != nil {
+                println("ERROR")
+                println(err.Error())
+                continue
+            }
+            if !quiet {
+                cmd.Stdout = os.Stdout
+            }
+            cmd.Stderr = os.Stderr
+            err = cmd.Run()
+            if err != nil {
+                yakit.Error("RUN docker-compose down for %v failed: %v", dirName, err)
+                continue
+            }
+            sleep(1)
+        }
+    }
+}
