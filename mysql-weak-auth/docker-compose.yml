@@ -1,0 +1,19 @@
+version: "3"
+services: 
+ db:
+  restart: always
+  container_name: mysql
+  command: 
+   --lower_case_table_names=1
+   --character-set-server=utf8mb4
+   --collation-server=utf8mb4_general_ci
+   --explicit_defaults_for_timestamp=true
+  image: mysql
+  environment:
+   TZ: Asia/Shanghai
+   MYSQL_ROOT_PASSWORD: 123456
+   MYSQL_ROOT_HOST: '%'
+  ports:
+   - 3306:3306
+  volumes:
+   - ./config.d/:/etc/mysql/conf.d/
