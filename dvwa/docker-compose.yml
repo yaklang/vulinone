@@ -1,0 +1,6 @@
+version: "2"
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8008:80"
