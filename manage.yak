@@ -10,7 +10,7 @@ quiet = cli.Have("q", cli.setHelp("Quiet is flag disable stdout"))
 
 keyword = cli.String("k", cli.setHelp("Start/Down Vulbox by Keyword"), cli.setRequired(false))
 
-infos, err = file.ReadDirInfoInDirectory("./weblogic")
+infos, err = file.ReadDirInfoInDirectory(".")
 die(err)
 outREADME = cli.String("o")
 // 判断端口是不是存在
