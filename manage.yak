@@ -2,8 +2,8 @@ loglevel(`info`)
 
 command = cli.String("c")
 command = str.ToLower(command)
-if !str.StringSliceContains(["up", "down", "ls"], command) {
-    die("no cmd available [up down ls]")
+if !str.StringSliceContains(["up", "down", "ls", "alloc"], command) {
+    die("no cmd available [up down ls alloc]")
 }
 
 quiet = cli.Have("q", cli.setHelp("Quiet is flag disable stdout"))
@@ -24,6 +24,7 @@ registerCurrentPort = func(port) {
 
 // 判断端口暴露信息
 exposePorts = {}
+noList = false
 outputPorts = func(name, port, originPort) {
     raw = exposePorts[name]
     if raw == undefined {
@@ -40,6 +41,8 @@ outputPorts = func(name, port, originPort) {
 }
 
 defer func{
+    // 设置了 nolist 就不展示了
+    if noList {return}
     println("## Expose PORTS By Vulinone\n\n")
     for name, data = range exposePorts {
         printf("### VUL IMAGE: `%v`\n\n", name)
@@ -115,6 +118,7 @@ for _, info = range infos {
                 outputPorts(vulName, port, originPort)
             }
         }
+
         if command == "up" {
             cmd, err = exec.Command("docker-compose up -d")
             if err != nil {
@@ -136,6 +140,7 @@ for _, info = range infos {
         }
 
         if command == "down" {
+            noList = true
             cmd, err = exec.Command("docker-compose down")
             if err != nil {
                 println("ERROR")
@@ -154,4 +159,20 @@ for _, info = range infos {
             sleep(1)
         }
     }
+}
+
+if command == "alloc" {
+    noList = true
+    maxPort = 0
+    x.Foreach(currentPort, func(i){
+        port = parseInt(i)
+        if port > maxPort {
+            maxPort = port
+        }
+    })
+    println("-----------------------------")
+    println("-----ALLOC PORT FINISHED-----")
+    println("-----------------------------")
+    println(sprintf("You CAN USE: %v", maxPort+1))
+    return
 }
