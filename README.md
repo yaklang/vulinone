@@ -1,23 +1,28 @@
 ## Expose PORTS By Vulinone
 
+### VUL IMAGE: `CVE-2017-10271`
 
-### VUL IMAGE: `mysql-weak-auth`
+ADDR: <a href="http://192.168.101.211:7001">http://192.168.101.211:7001</a>  PORT: `7001` `(<-7001 in docker)`
 
-    PORT: `3306` `(<-3306 in docker)`
+### VUL IMAGE: `CVE-2018-2628`
 
-### VUL IMAGE: `thinkphp-5.0.20-rce`
+ADDR: <a href="http://192.168.101.211:7002">http://192.168.101.211:7002</a>  PORT: `7002` `(<-7001 in docker)`
 
-    PORT: `8005` `(<-80 in docker)`
+### VUL IMAGE: `CVE-2018-2894`
 
-### VUL IMAGE: `thinkphp-5.0.23-rce`
+ADDR: <a href="http://192.168.101.211:7003">http://192.168.101.211:7003</a>  PORT: `7003` `(<-7001 in docker)`
 
-    PORT: `8004` `(<-80 in docker)`
+### VUL IMAGE: `CVE-2020-14882`
 
-### VUL IMAGE: `tomcat7-weak-auth`
+ADDR: <a href="http://192.168.101.211:7004">http://192.168.101.211:7004</a>  PORT: `7004` `(<-7001 in docker)`
 
-    PORT: `8000` `(<-8080 in docker)`
+### VUL IMAGE: `ssrf`
 
-### VUL IMAGE: `tomcat8-weak-auth`
+ADDR: <a href="http://192.168.101.211:7005">http://192.168.101.211:7005</a>  PORT: `7005` `(<-7001 in docker)`
 
-    PORT: `8001` `(<-8080 in docker)`
+### VUL IMAGE: `weak_password`
+
+ADDR: <a href="http://192.168.101.211:7006">http://192.168.101.211:7006</a>  PORT: `7006` `(<-7001 in docker)`
+
+ADDR: <a href="http://192.168.101.211:5556">http://192.168.101.211:5556</a>  PORT: `5556` `(<-5556 in docker)`
 

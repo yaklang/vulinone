@@ -12,7 +12,7 @@ keyword = cli.String("k", cli.setHelp("Start/Down Vulbox by Keyword"), cli.setRe
 
 infos, err = file.ReadDirInfoInDirectory(".")
 die(err)
-
+outREADME = cli.String("o")
 // 判断端口是不是存在
 currentPort = ["0"]
 alreadyRegister = func(port) {
@@ -25,31 +25,51 @@ registerCurrentPort = func(port) {
 // 判断端口暴露信息
 exposePorts = {}
 noList = false
-outputPorts = func(name, port, originPort) {
+outputPorts = func(name, port, originPort, isSuccessful) {
     raw = exposePorts[name]
     if raw == undefined {
         exposePorts[name] = [{
             "current": port,
             "origin":  originPort,
+            "isSuccessful":isSuccessful,
         }]
     } else {
         exposePorts[name] = append(exposePorts[name], {
             "current": port,
             "origin": originPort,
+            "isSuccessful":isSuccessful,
         })
     }
 }
 
 defer func{
     // 设置了 nolist 就不展示了
-    if noList {return}
-    println("## Expose PORTS By Vulinone\n\n")
-    for name, data = range exposePorts {
-        printf("### VUL IMAGE: `%v`\n\n", name)
-        for _, dataItem = range data {
-            printf("    PORT: `%v` `(<-%v in docker)`\n\n", dataItem["current"], dataItem["origin"])
+    genMd = fn(){
+        md_str = "## Expose PORTS By Vulinone\n\n"
+        for name, data = range exposePorts {
+            md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
+            for _, dataItem = range data {
+                addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
+                md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)`\n\n",addr,addr, dataItem["current"], dataItem["origin"])
+            }
         }
+        return md_str
     }
+    if !noList {
+        println(genMd())
+    }
+    if outREADME != "" {
+        
+        if !file.IsAbs(outREADME){
+            yakit.Error("Relative path is not supported")        
+        }else{
+            err = file.Save(outREADME,genMd())
+            die(err)
+            yakit.Info("Save file successful")
+        }
+        
+    }
+
 }
 
 defer func{
@@ -107,15 +127,35 @@ for _, info = range infos {
                     continue
                 }
                 port, originPort = info[2], info[3]
-                if alreadyRegister(port) {
-                    msg := sprintf("VUL IMAGE: %v's expose ports: %v(:%v in docker) is conflict", vulName, port, originPort)
-                    defer yakit.Error(msg)
-                    die(msg)
-                } else {
-                    registerCurrentPort(port)
+                oldPort = port
+                forTimes = 0
+                p = parseInt(port)
+                for {
+                    if !alreadyRegister(port){
+                        if forTimes > 0{
+                            oldPorts = sprintf("\"%s:%s\"",oldPort, originPort)
+                            newPorts =sprintf("\"%s:%s\"",port, originPort)
+                            yakit.Info("Gen new ports:`%s` for image %s(origin:`%s`)",newPorts,vulName,oldPorts)
+                            yamlContent = str.Replace(string(yamlContent), oldPorts, newPorts, 1)
+                            file.Save(composeYamlPath,yamlContent)
+                        }
+                        registerCurrentPort(port)
+                        break
+                    }
+                    
+
+
+                    if forTimes > 100{
+                        p = os.GetRandomAvailableTCPPort()
+                        break   
+                    }else{
+                        p+=1
+                    }
+                    port = sprintf("%d",p)
+                    forTimes += 1
                 }
                 yakit.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
-                outputPorts(vulName, port, originPort)
+                outputPorts(vulName, port, originPort,true)
             }
         }
 
@@ -134,6 +174,7 @@ for _, info = range infos {
             err = cmd.Run()
             if err != nil {
                 yakit.Error("RUN docker-compose up for %v failed: %v", dirName, err)
+                exposePorts[vulName]["isSuccessful"] = false
                 continue
             }
             sleep(1)
