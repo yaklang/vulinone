@@ -1,5 +1,5 @@
 loglevel(`info`)
-
+rootPath = file.GetDirPath(YAK_FILENAME)
 command = cli.String("c")
 command = str.ToLower(command)
 if !str.StringSliceContains(["up", "down", "ls", "alloc"], command) {
@@ -26,19 +26,10 @@ registerCurrentPort = func(port) {
 exposePorts = {}
 noList = false
 outputPorts = func(name, port, originPort, isSuccessful) {
-    raw = exposePorts[name]
-    if raw == undefined {
-        exposePorts[name] = [{
-            "current": port,
-            "origin":  originPort,
-            "isSuccessful":isSuccessful,
-        }]
-    } else {
-        exposePorts[name] = append(exposePorts[name], {
-            "current": port,
-            "origin": originPort,
-            "isSuccessful":isSuccessful,
-        })
+    exposePorts[name] = {
+        "current": port,
+        "origin":  originPort,
+        "isSuccessful":isSuccessful,
     }
 }
 
@@ -46,12 +37,10 @@ defer func{
     // 设置了 nolist 就不展示了
     genMd = fn(){
         md_str = "## Expose PORTS By Vulinone\n\n"
-        for name, data = range exposePorts {
+        for name, dataItem = range exposePorts {
             md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
-            for _, dataItem = range data {
-                addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
-                md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)`\n\n",addr,addr, dataItem["current"], dataItem["origin"])
-            }
+            addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
+            md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)`\n\n",addr,addr, dataItem["current"], dataItem["origin"])
         }
         return md_str
     }
@@ -79,12 +68,14 @@ defer func{
     }
 }
 
+
 for _, info = range infos {
     if str.Contains(info.Path, "/.git/") {
         continue
     }
 
     if info.IsDir {
+        path = info.Path
         haveCompose = false
         dirName = ""
         composeYamlPath = ""
@@ -155,7 +146,7 @@ for _, info = range infos {
                     forTimes += 1
                 }
                 yakit.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
-                outputPorts(vulName, port, originPort,true)
+                outputPorts(path[len(rootPath)+1:], port, originPort,true)
             }
         }
 
@@ -187,7 +178,7 @@ for _, info = range infos {
                 println("ERROR")
                 println(err.Error())
                 continue
-            }
+            } 
             if !quiet {
                 cmd.Stdout = os.Stdout
             }
