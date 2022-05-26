@@ -1,6 +1,5 @@
 loglevel(`info`)
 rootPath = file.GetDirPath(YAK_FILENAME)
-localIP = "192.168.101.211"
 command = cli.String("c")
 command = str.ToLower(command)
 if !str.StringSliceContains(["up", "down", "ls", "alloc"], command) {
@@ -48,14 +47,15 @@ defer func{
         }else{
             status = "successful"
         }
-        md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
+        
+        md_str += sprintf("### VUL IMAGE: `%v`\n", name)
         for _,pairPort := range dataItem["pairPorts"]{
             current = pairPort[0]
             origin = pairPort[1]
-            addr = sprintf("http://%v:%v",localIp,current)
-            md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)` Status: `%s`\n\n",addr,addr, current, origin,status)
+            addr = sprintf("http://%s:%v","192.168.101.211",current)
+            md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)` Status: `%s`\n",addr,addr, current, origin,status)
         }
-        
+        md_str += "\n"
         
     }
     err = file.Save(file.Join(rootPath,"README.md"),md_str)
