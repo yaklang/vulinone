@@ -7,4 +7,4 @@ services:
     - ./context.xml:/usr/local/tomcat/webapps/manager/META-INF/context.xml
     - ./context.xml:/usr/local/tomcat/webapps/host-manager/META-INF/context.xml
    ports:
-    - "8001:8080"
+    - "8002:8080"
