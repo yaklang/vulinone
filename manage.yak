@@ -1,5 +1,5 @@
 loglevel(`info`)
-
+rootPath = file.GetDirPath(YAK_FILENAME)
 command = cli.String("c")
 command = str.ToLower(command)
 if !str.StringSliceContains(["up", "down", "ls", "alloc"], command) {
@@ -14,7 +14,7 @@ infos, err = file.ReadDirInfoInDirectory(".")
 die(err)
 outREADME = cli.String("o")
 // 判断端口是不是存在
-currentPort = ["0"]
+currentPort = ["0","80"]
 alreadyRegister = func(port) {
     return str.StringSliceContains(currentPort, port)
 }
@@ -26,44 +26,37 @@ registerCurrentPort = func(port) {
 exposePorts = {}
 noList = false
 outputPorts = func(name, port, originPort, isSuccessful) {
-    raw = exposePorts[name]
-    if raw == undefined {
-        exposePorts[name] = [{
-            "current": port,
-            "origin":  originPort,
-            "isSuccessful":isSuccessful,
-        }]
-    } else {
-        exposePorts[name] = append(exposePorts[name], {
-            "current": port,
-            "origin": originPort,
-            "isSuccessful":isSuccessful,
-        })
+    exposePorts[name] = {
+        "current": port,
+        "origin":  originPort,
+        "isSuccessful":isSuccessful,
     }
 }
 
 defer func{
     // 设置了 nolist 就不展示了
-    genMd = fn(){
-        md_str = "## Expose PORTS By Vulinone\n\n"
-        for name, data = range exposePorts {
-            md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
-            for _, dataItem = range data {
-                addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
-                md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)`\n\n",addr,addr, dataItem["current"], dataItem["origin"])
-            }
+    md_str = "## Expose PORTS By Vulinone\n\n"
+    status = "successful"
+    for name, dataItem = range exposePorts {
+        if !dataItem["isSuccessful"]{
+            status = "error"
+        }else{
+            status = "successful"
         }
-        return md_str
+        md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
+        addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
+        md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)` Status: `%s`\n\n",addr,addr, dataItem["current"], dataItem["origin"],status)
     }
+    err = file.Save(file.Join(rootPath,"README.md"),md_str)
     if !noList {
-        println(genMd())
+        println(md_str)
     }
     if outREADME != "" {
         
         if !file.IsAbs(outREADME){
             yakit.Error("Relative path is not supported")        
         }else{
-            err = file.Save(outREADME,genMd())
+            err = file.Save(outREADME,md_str)
             die(err)
             yakit.Info("Save file successful")
         }
@@ -79,12 +72,14 @@ defer func{
     }
 }
 
+
 for _, info = range infos {
     if str.Contains(info.Path, "/.git/") {
         continue
     }
 
     if info.IsDir {
+        path = info.Path
         haveCompose = false
         dirName = ""
         composeYamlPath = ""
@@ -155,7 +150,7 @@ for _, info = range infos {
                     forTimes += 1
                 }
                 yakit.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
-                outputPorts(vulName, port, originPort,true)
+                outputPorts(path[len(rootPath)+1:], port, originPort,true)
             }
         }
 
@@ -174,7 +169,7 @@ for _, info = range infos {
             err = cmd.Run()
             if err != nil {
                 yakit.Error("RUN docker-compose up for %v failed: %v", dirName, err)
-                exposePorts[vulName]["isSuccessful"] = false
+                exposePorts[path[len(rootPath)+1:]]["isSuccessful"] = false
                 continue
             }
             sleep(1)
@@ -187,7 +182,7 @@ for _, info = range infos {
                 println("ERROR")
                 println(err.Error())
                 continue
-            }
+            } 
             if !quiet {
                 cmd.Stdout = os.Stdout
             }
