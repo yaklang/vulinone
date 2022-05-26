@@ -14,7 +14,7 @@ infos, err = file.ReadDirInfoInDirectory(".")
 die(err)
 outREADME = cli.String("o")
 // 判断端口是不是存在
-currentPort = ["0"]
+currentPort = ["0","80"]
 alreadyRegister = func(port) {
     return str.StringSliceContains(currentPort, port)
 }
@@ -35,24 +35,28 @@ outputPorts = func(name, port, originPort, isSuccessful) {
 
 defer func{
     // 设置了 nolist 就不展示了
-    genMd = fn(){
-        md_str = "## Expose PORTS By Vulinone\n\n"
-        for name, dataItem = range exposePorts {
-            md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
-            addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
-            md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)`\n\n",addr,addr, dataItem["current"], dataItem["origin"])
+    md_str = "## Expose PORTS By Vulinone\n\n"
+    status = "successful"
+    for name, dataItem = range exposePorts {
+        if !dataItem["isSuccessful"]{
+            status = "error"
+        }else{
+            status = "successful"
         }
-        return md_str
+        md_str += sprintf("### VUL IMAGE: `%v`\n\n", name)
+        addr = sprintf("http://%v:%v","192.168.101.211",dataItem["current"])
+        md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)` Status: `%s`\n\n",addr,addr, dataItem["current"], dataItem["origin"],status)
     }
+    err = file.Save(file.Join(rootPath,"README.md"),md_str)
     if !noList {
-        println(genMd())
+        println(md_str)
     }
     if outREADME != "" {
         
         if !file.IsAbs(outREADME){
             yakit.Error("Relative path is not supported")        
         }else{
-            err = file.Save(outREADME,genMd())
+            err = file.Save(outREADME,md_str)
             die(err)
             yakit.Info("Save file successful")
         }
@@ -165,7 +169,7 @@ for _, info = range infos {
             err = cmd.Run()
             if err != nil {
                 yakit.Error("RUN docker-compose up for %v failed: %v", dirName, err)
-                exposePorts[vulName]["isSuccessful"] = false
+                exposePorts[path[len(rootPath)+1:]]["isSuccessful"] = false
                 continue
             }
             sleep(1)
