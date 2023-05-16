@@ -6,11 +6,29 @@ if !str.StringSliceContains(["up", "down", "ls", "alloc"], command) {
     die("no cmd available [up down ls alloc]")
 }
 
+debug = cli.Bool("debug",cli.setDefault(false))
+
+if debug{
+    loglevel(`debug`)
+}
+
 quiet = cli.Have("q", cli.setHelp("Quiet is flag disable stdout"))
 
 keyword = cli.String("k", cli.setHelp("Start/Down Vulbox by Keyword"), cli.setRequired(false))
 
-infos, err = file.ReadDirInfoInDirectory(".")
+boxPath = cli.String("path", cli.setHelp("Vulbox path"))
+
+if boxPath == "" {
+    boxPath = rootPath
+}
+
+remoteServer = cli.String("remote", cli.setHelp("docker remote server"))
+
+if remoteServer != "" {
+    os.Setenv("DOCKER_HOST","tcp://"+remoteServer)
+}
+
+infos, err = file.ReadDirInfoInDirectory(boxPath)
 die(err)
 outREADME = cli.String("o")
 // 判断端口是不是存在
@@ -52,7 +70,7 @@ defer func{
         for _,pairPort := range dataItem["pairPorts"]{
             current = pairPort[0]
             origin = pairPort[1]
-            addr = sprintf("http://%s:%v","192.168.101.211",current)
+            addr = sprintf("http://%s:%v","192.168.0.6",current)
             md_str += sprintf("ADDR: <a href=\"%s\">%s</a>  PORT: `%v` `(<-%v in docker)` Status: `%s`  \n",addr,addr, current, origin,status)
         }
         md_str += "\n"
@@ -65,11 +83,11 @@ defer func{
     if outREADME != "" {
         
         if !file.IsAbs(outREADME){
-            yakit.Error("Relative path is not supported")        
+            log.Error("Relative path is not supported")        
         }else{
             err = file.Save(outREADME,md_str)
             die(err)
-            yakit.Info("Save file successful")
+            log.Info("Save file successful")
         }
         
     }
@@ -88,7 +106,6 @@ for _, info = range infos {
     if str.Contains(info.Path, "/.git/") {
         continue
     }
-
     if info.IsDir {
         path = info.Path
         haveCompose = false
@@ -110,19 +127,25 @@ for _, info = range infos {
         }
 
         // Filter
-        yakit.Info("checking for %v", file.Split(dirName)[1])
+        // log.Info("checking for %v", file.Split(dirName)[1])
         if keyword != "" {
-            _, name = file.Split(dirName)
+            // _, name = file.Split(dirName)
+            name = str.TrimPrefix(dirName,boxPath)
+    
             if !str.Contains(name, keyword) {
-                yakit.Info("Skip [%v]", name)
+                log.debug("Skip [%v]", name)
                 continue
             }
         }
-
+        // log.Info("aaa")
+        if command == "ls" {
+            log.Info("found VulBox [%v]",str.TrimPrefix(dirName,boxPath))
+            continue
+        }
         // Startup or DOWN
         err = os.Chdir(dirName)
         die(err)
-        println("Change Dir To [" + dirName + "]")
+       # println("Change Dir To [" + dirName + "]")
 
         _, vulName = file.Split(dirName)
 
@@ -141,7 +164,7 @@ for _, info = range infos {
                         if forTimes > 0{
                             oldPorts = sprintf("\"%s:%s\"",oldPort, originPort)
                             newPorts =sprintf("\"%s:%s\"",port, originPort)
-                            yakit.Info("Gen new ports:`%s` for image %s(origin:`%s`)",newPorts,vulName,oldPorts)
+                            log.Info("Gen new ports:`%s` for image %s(origin:`%s`)",newPorts,vulName,oldPorts)
                             yamlContent = str.Replace(string(yamlContent), oldPorts, newPorts, 1)
                             file.Save(composeYamlPath,yamlContent)
                         }
@@ -160,13 +183,14 @@ for _, info = range infos {
                     port = sprintf("%d",p)
                     forTimes += 1
                 }
-                yakit.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
+                log.Info("found vul[%v] port: %5s    origin: %v", vulName, port, originPort)
                 outputPorts(path[len(rootPath)+1:], port, originPort,true)
             }
         }
 
         if command == "up" {
-            cmd, err = exec.Command("docker-compose up -d")
+            #cmd, err = exec.Command("docker-compose up -d")
+            cmd, err = exec.Command("pwd")
             if err != nil {
                 println("ERROR")
                 println(err.Error())
@@ -179,7 +203,7 @@ for _, info = range infos {
             cmd.Stderr = os.Stderr
             err = cmd.Run()
             if err != nil {
-                yakit.Error("RUN docker-compose up for %v failed: %v", dirName, err)
+                log.Error("RUN docker-compose up for %v failed: %v", dirName, err)
                 exposePorts[path[len(rootPath)+1:]]["isSuccessful"] = false
                 continue
             }
@@ -200,7 +224,7 @@ for _, info = range infos {
             cmd.Stderr = os.Stderr
             err = cmd.Run()
             if err != nil {
-                yakit.Error("RUN docker-compose down for %v failed: %v", dirName, err)
+                log.Error("RUN docker-compose down for %v failed: %v", dirName, err)
                 continue
             }
             sleep(1)
