@@ -189,8 +189,7 @@ for _, info = range infos {
         }
 
         if command == "up" {
-            #cmd, err = exec.Command("docker-compose up -d")
-            cmd, err = exec.Command("pwd")
+            cmd, err = exec.Command("docker-compose up -d")
             if err != nil {
                 println("ERROR")
                 println(err.Error())
