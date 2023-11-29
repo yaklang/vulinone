@@ -2,5 +2,6 @@ version: '2'
 services:
  web:
    image: vulhub/fastjson:1.2.45
+   platform: linux/amd64
    ports:
     - "8010:8090"

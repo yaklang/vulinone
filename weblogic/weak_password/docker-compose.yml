@@ -2,6 +2,7 @@ version: '2'
 services:
  weblogic:
    image: vulhub/weblogic:10.3.6.0-2017
+   platform: linux/amd64
    volumes:
     - ./web:/root/Oracle/Middleware/user_projects/domains/base_domain/autodeploy
    ports:

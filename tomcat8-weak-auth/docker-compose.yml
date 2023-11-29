@@ -2,6 +2,7 @@ version: '2'
 services:
  tomcat:
    image: vulhub/tomcat:8.0
+   platform: linux/amd64
    volumes:
     - ./tomcat-users.xml:/usr/local/tomcat/conf/tomcat-users.xml
     - ./context.xml:/usr/local/tomcat/webapps/manager/META-INF/context.xml

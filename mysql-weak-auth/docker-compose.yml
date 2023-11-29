@@ -3,6 +3,7 @@ services:
  db:
   restart: always
   container_name: mysql
+  platform: linux/amd64
   command: 
    --lower_case_table_names=1
    --character-set-server=utf8mb4
